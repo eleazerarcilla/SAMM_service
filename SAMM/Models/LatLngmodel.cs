@@ -13,5 +13,8 @@ namespace SAMM.Models
         public double Lng { get; set; }
         public double PrevLat { get; set; }
         public double PrevLng { get; set; }
+        public bool IsParked { get; set; }
+        public int LatestStationOA { get; set; }
+        public int PrevStationOA { get; set; }
     }
 }

@@ -26,7 +26,7 @@ namespace SAMM
                     {
                         case "-test":
                             Service1 sammService = new Service1();
-                            sammService.PerformGETCallback();
+                           // sammService.PerformGETCallback();
                             break;
                     }
                 }
