@@ -31,6 +31,7 @@ namespace SAMM
         List<StationLocationModel> StationLocModelList = new List<StationLocationModel>();
         List<PositionModel> pos = new List<PositionModel>();
         List<DevicesModel> DevicesList = new List<DevicesModel>();
+        List<DestinationModel> _DestList;
         #endregion
         public Service1()
         {
@@ -51,7 +52,7 @@ namespace SAMM
         {
             try
             {
-                DevicesList = GetDevices(help.GenerateURL(Constants.TraccarURI, lastctr).Replace("positions","devices"));
+                GetDevices(help.GenerateURL(Constants.TraccarURI, lastctr).Replace("positions", "devices"));
                 PerformGETCallback(help.GenerateURL(Constants.TraccarURI, lastctr), Constants.GMURL, Constants.DefZoomLvl, Constants.FireBaseURL, Constants.FireBaseAuth, Constants.TraccarUName, Constants.TraccarPword, GetStations(Constants.LocationURL));
             }
             catch (Exception ex)
@@ -68,7 +69,7 @@ namespace SAMM
         {
         }
         #endregion
-       
+        
         public void PerformGETCallback(string apiURL, string GMURL, string DefZoomLvl, string FireBaseURL, string FireBaseAuth, string TraccarUName, string TraccarPword, List<DestinationModel> DestList)
         {
             try
@@ -122,11 +123,14 @@ namespace SAMM
                 }
 
                 string Error = string.Empty;
-                if (!PushToFirebase(LatLngList.Take((int)NumberOfGPSDeviceToProcess).ToList(), FireBaseURL, FireBaseAuth, out Error) || !PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList), out Error))
-                {
-                    Log.Error("----ERROR Pushing " + Error + " Updates----");
-                }
-                Log.Info("----OVERALL Tasks completed in " + s.Elapsed);
+                //SAMM.exe:
+                PushToFirebase(LatLngList.ToList(), FireBaseURL, FireBaseAuth);
+                Log.Info("----OVERALL Tasks (E-loop) completed " + s.Elapsed);
+
+                //SAMM_2.exe:
+                //PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
+                //Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
+
                 s.Stop();
 
             }
@@ -178,12 +182,12 @@ namespace SAMM
                         StationLocModel.OrderOfArrival = DestinationListEntry.OrderOfArrival;
                         int iteratorID = DestinationListEntry.OrderOfArrival;
                         bool isMainTerminal = DestinationListEntry.Value.Contains("Main") ? true : false;
-                        bool IsExisting = StationLocModelList.FirstOrDefault(x => x.OrderOfArrival == iteratorID) == null ? false : true;
+                        bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value) == null ? false : true;
 
 
-                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? 0.04 : 0.0)))
+                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
                         {
-                            loopIds += (StationLocModel.LoopIds == string.Empty ? (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() + "," : string.Empty) : (LatLngListEntry.deviceid != 0 ? ("," + LatLngListEntry.deviceid) : string.Empty));
+                            loopIds += (StationLocModel.LoopIds == string.Empty ? (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() + "," : string.Empty) : (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() : string.Empty));
 
                             if (!IsExisting)
                             {
@@ -191,7 +195,7 @@ namespace SAMM
                                 StationLocModelList.Add(StationLocModel);
                             }
                             else
-                                UpdateExistingStationLocationModel(StationLocModelList, loopIds, DestinationListEntry, iteratorID, true);
+                                UpdateExistingStationLocationModel(StationLocModelList, LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, true);
                         }
                         else
                         {
@@ -220,28 +224,43 @@ namespace SAMM
         {
             if (IsDwelling)
             {
-                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.OrderOfArrival == iteratorID);
-                ExistingRecord.Dwell = loopids;
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                if (!ExistingRecord.Dwell.Split(',').Contains(loopids))
+                    ExistingRecord.Dwell = ExistingRecord.Dwell + loopids + ",";
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
-                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Dwell.Contains(loopids) && x.OrderOfArrival != iteratorID).ToList();
+
+                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
+                    .Where(y => y.Dwell.Split(',').Contains(loopids)).ToList();
+
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
-                    entry.Dwell = entry.Dwell.Replace(loopids, "");
+                    List<String> dwellList = new List<String>(entry.Dwell.Split(','));
+                    dwellList.Remove(loopids);
+                    entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
+
                 }
-                ExistingRecordList = SLModelList.Where(x => x.LoopIds.Contains(loopids) && x.OrderOfArrival != iteratorID).ToList();
+                ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
+                    .Where(y => y.LoopIds.Split(',').Contains(loopids)).ToList();
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
-                    entry.LoopIds = entry.LoopIds.Replace(loopids, "");
+                    List<String> loopIdsList = new List<String>(entry.LoopIds.Split(','));
+                    loopIdsList.Remove(loopids);
+                    entry.LoopIds = String.Join(",", loopIdsList.ToArray()) + ",";
                 }
             }
             else
             {
-                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.OrderOfArrival == iteratorID);
-                if (ExistingRecord.Dwell.Contains(loopids))
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                String[] existingDwellList = ExistingRecord.Dwell.Split(',');
+
+                if (existingDwellList.Contains(loopids))
                 {
-                    ExistingRecord.LoopIds = loopids + ",";
-                    ExistingRecord.Dwell = ExistingRecord.Dwell.Replace(loopids + ",","");
+                    if (!ExistingRecord.LoopIds.Split(',').Contains(loopids))
+                        ExistingRecord.LoopIds = ExistingRecord.LoopIds + loopids + ",";
+                    List<String> dwellList = new List<String>(existingDwellList);
+                    dwellList.Remove(loopids);
+                    ExistingRecord.Dwell = String.Join(",", dwellList.ToArray()) + ",";
                 }
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
@@ -251,7 +270,7 @@ namespace SAMM
                 //    entry.LoopIds = entry.LoopIds.Replace((loopids+","), "");
                 //}
             }
-            
+
         }
         public void RemoveOfflineDevicesFromList(List<StationLocationModel> SLModelList)
         {
@@ -260,26 +279,35 @@ namespace SAMM
                 if (entry.LoopIds != null && entry.LoopIds.Length!=0)
                 {
                     //Log.Info(entry.LoopIds + "length: " + entry.LoopIds.Length);
-                    List<string> _tempLoopIds = entry.LoopIds.Substring(0, entry.LoopIds.Length - 1).Split(',').ToList();
-                   
+                    List<string> _tempLoopIds = entry.LoopIds.Substring(0, entry.LoopIds.Length).Split(',').ToList();
+
                     foreach (string loop in _tempLoopIds)
                     {
-                        if (!IsDeviceOnline(Convert.ToInt32(loop)))
-                            entry.LoopIds = entry.LoopIds.Replace((loop + ","), "");// ;
+                        if (loop != "")
+                            if (!IsDeviceOnline(Convert.ToInt32(loop)))
+                            {
+                                List<String> loopIdsList = new List<String>(entry.LoopIds.Split(','));
+                                loopIdsList.Remove(loop);
+                                entry.LoopIds = String.Join(",", loopIdsList.ToArray());
+
+                            }
+
                     }
-                 
                 }
-                if(entry.Dwell != null && entry.Dwell.Length != 0)
+                if (entry.Dwell != null && entry.Dwell.Length != 0)
                 {
-                    List<string> _tempDwellIds = entry.Dwell.Substring(0, entry.Dwell.Length - 1).Split(',').ToList();
+                    List<string> _tempDwellIds = entry.Dwell.Substring(0, entry.Dwell.Length).Split(',').ToList();
                     foreach (string loop in _tempDwellIds)
                     {
-                        if (!IsDeviceOnline(Convert.ToInt32(loop)))
-                            entry.Dwell = entry.Dwell.Replace((loop + ","), "");// ;
+                        if (loop != "")
+                            if (!IsDeviceOnline(Convert.ToInt32(loop)))
+                            {
+                                List<String> dwellList = new List<String>(entry.Dwell.Split(','));
+                                dwellList.Remove(loop);
+                                entry.Dwell = String.Join(",", dwellList.ToArray());
+                            }
                     }
                 }
-                
-
             }
         }
         public bool IsDeviceOnline(int LoopId)
@@ -292,6 +320,7 @@ namespace SAMM
             }catch(Exception ex)
             {
                 //ignored
+                Log.Error(ex);
             }
             return IsOnline;
         }
@@ -300,13 +329,14 @@ namespace SAMM
             DestinationModel result = new DestinationModel();
             try
             {
-                Parallel.ForEach(StationList, entry =>
+                Parallel.ForEach(StationList, (entry, loopState) =>
                 {
 
                     bool isMainTerminal = entry.Value.Contains("Main") ? true : false;
-                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? 0.04 : 0.0)))
+                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
                     {
                         result = entry;
+                        loopState.Break();
                     }
 
                 });
@@ -401,114 +431,160 @@ namespace SAMM
             }
             return StationsLoc;
         }
-        public List<DevicesModel> GetDevices(string URL)
+        public async void GetDevices(string URL)
         {
-            List<DevicesModel> DevicesList = new List<DevicesModel>();
-            try
+            await Task.Run(() =>
             {
-                string GETResult = string.Empty;
-                StationList.Clear();
-                Stopwatch s = new Stopwatch();
-                s.Start();
-                HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(URL);
-                httpRequest.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-                httpRequest.Credentials = new NetworkCredential(Constants.TraccarUName, Constants.TraccarPword);
-                HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
-                using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
+
+                try
                 {
-                    GETResult = streamReader.ReadToEnd();
-                    DevicesList = JsonConvert.DeserializeObject<List<DevicesModel>>(GETResult);
-                    streamReader.Close();
+                    string GETResult = string.Empty;
+                    StationList.Clear();
+                    Stopwatch s = new Stopwatch();
+                    s.Start();
+                    HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(URL);
+                    httpRequest.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                    httpRequest.Credentials = new NetworkCredential(Constants.TraccarUName, Constants.TraccarPword);
+                    HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
+                    using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                    {
+                        GETResult = streamReader.ReadToEnd();
+                        DevicesList = JsonConvert.DeserializeObject<List<DevicesModel>>(GETResult);
+                        streamReader.Close();
+                    }
+                    httpResponse.GetResponseStream().Close();
+                    httpResponse.GetResponseStream().Flush();
+                    s.Stop();
+                    //  Log.Info("Stations query finished in:" + s.Elapsed);
+                    //Log.Info("Found (" + DevicesList.Count() + ") device" + (DevicesList.Count() > 1 ? "s." : "."));
+
                 }
-                httpResponse.GetResponseStream().Close();
-                httpResponse.GetResponseStream().Flush();
-                s.Stop();
-                //  Log.Info("Stations query finished in:" + s.Elapsed);
-                //Log.Info("Found (" + DevicesList.Count() + ") device" + (DevicesList.Count() > 1 ? "s." : "."));
+                catch (Exception ex)
+                {
+                    Log.Error(ex);
 
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-
-            }
-            return DevicesList;
+            );
         }
         #endregion
         #region Pushing to Firebase
-        public bool PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth, out string Error)
+        public async void PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth)
         {
-            bool res = false;
-            string url = string.Empty;
-            try
+            await Task.Run(() =>
             {
-                Stopwatch s = new Stopwatch();
-                s.Start();
-                Parallel.ForEach(LatLngList, LatLngListEntry =>
+                bool res = false;
+                string url = string.Empty;
+                try
                 {
-                    url = FireBaseURL + LatLngListEntry.deviceid + "/.json?auth=" + FireBaseAuth;
-                    string resultOfPost = string.Empty;
+                    Stopwatch s = new Stopwatch();
+                    s.Start();
+                    Parallel.ForEach(LatLngList, LatLngListEntry =>
+                    {
+                        try
+                        {
+                            url = FireBaseURL + LatLngListEntry.deviceid + "/.json?auth=" + FireBaseAuth;
+                            string resultOfPost = string.Empty;
 
-                    HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-                    httpRequest.Method = "PATCH";
-                    httpRequest.ContentType = "application/json";
+                            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
+                            httpRequest.Method = "PATCH";
+                            httpRequest.ContentType = "application/json";
 
-                    var buffer = Encoding.UTF8.GetBytes(CreateLatLngJson(LatLngListEntry));
-                    httpRequest.ContentLength = buffer.Length;
-                    httpRequest.GetRequestStream().Write(buffer, 0, buffer.Length);
-                    var response = httpRequest.GetResponse();
+                            var buffer = Encoding.UTF8.GetBytes(CreateLatLngJson(LatLngListEntry));
+                            httpRequest.ContentLength = buffer.Length;
+                            httpRequest.GetRequestStream().Write(buffer, 0, buffer.Length);
+                            var response = httpRequest.GetResponse();
 
-                    response.Close();
-                    httpRequest.GetRequestStream().Close();
-                    httpRequest.GetRequestStream().Flush();
-                });
-                res = true;
-                s.Stop();
-                // Log.Info("--(" + LatLngList.Count() + ")--(" + pos.Count() + ")--E-Loop position update Task completed in " + s.Elapsed);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Error:" + url + " | " + ex);
+                            response.Close();
+                            httpRequest.GetRequestStream().Close();
+                            httpRequest.GetRequestStream().Flush();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error("Error in E-loop Location:" + url + " | " + ex);
+                        }
+                    });
+                    res = true;
+                    s.Stop();
+                    // Log.Info("--(" + LatLngList.Count() + ")--(" + pos.Count() + ")--E-Loop position update Task completed in " + s.Elapsed);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Error in E-loop Location:" + url + " | " + ex);
 
-            }
-            Error = "E-Loop location";
-            return res;
+                }
+                //Error = "E-Loop location";
+                //return res;
+            });
+
         }
-        public bool PushStationUpdatesToFirebase(List<StationLocationModel> StationLocModelList, out string Error)
+        public void PushStationUpdatesToFirebase(List<StationLocationModel> StationLocModelList)//, out string Error)
         {
             bool success = false;
             Stopwatch s = new Stopwatch();
             try
             {
                 s.Start();
-                Parallel.ForEach(StationLocModelList, StationListEntry =>
+                Parallel.ForEach(StationLocModelList, async StationListEntry =>
                 {
-                    string url = Constants.FireBaseURL.Replace("drivers", "vehicle_destinations") + StationListEntry.Destination.Value + "/.json?auth=" + Constants.FireBaseAuth;
-                    string resultOfPost = string.Empty;
-                    HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-                    httpRequest.Method = "PUT";
-                    httpRequest.ContentType = "application/json";
+                    await Task.Run(() =>
+                    {
+                        string url = Constants.FireBaseURL.Replace("drivers", "vehicle_destinations") + StationListEntry.Destination.Value + "/.json?auth=" + Constants.FireBaseAuth;
+                        try
+                        {
+                            string resultOfPost = string.Empty;
+                            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
+                            httpRequest.Method = "PUT";
+                            httpRequest.ContentType = "application/json";
 
-                    var buffer = Encoding.UTF8.GetBytes(CreateDestinationJson(StationListEntry));
-                    httpRequest.ContentLength = buffer.Length;
-                    httpRequest.GetRequestStream().Write(buffer, 0, buffer.Length);
-                    var response = httpRequest.GetResponse();
+                            var buffer = Encoding.UTF8.GetBytes(CreateDestinationJson(StationListEntry));
+                            httpRequest.ContentLength = buffer.Length;
+                            httpRequest.GetRequestStream().Write(buffer, 0, buffer.Length);
+                            WebResponse response = httpRequest.GetResponse();
+                            response.Close();
+                            httpRequest.GetRequestStream().Close();
+                            httpRequest.GetRequestStream().Flush();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error("Error in E-loop Location:" + url + " | " + ex);
+                        }
+                    });
 
-                    response.Close();
-                    httpRequest.GetRequestStream().Close();
-                    httpRequest.GetRequestStream().Flush();
 
+                    if (StationListEntry.Destination.Value.ToString() == "MainTerminalbesideFilinvestFirestation")
+                    {
+                        await Task.Run(() =>
+                        {
+                            try
+                            {
+                                HttpWebRequest mainTerminalHistory_webReq = (HttpWebRequest)WebRequest.Create(Constants.SaveMainTerminalHistoryURL
+                                + "dwell=" + StationListEntry.Dwell.ToString()
+                                + "&loopids=" + StationListEntry.LoopIds.ToString());
+                                WebResponse mainTerminalHistory_response = mainTerminalHistory_webReq.GetResponse();
+                                mainTerminalHistory_response.Close();
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Error in E-loop Location: Updating of Mainterminal History | " + ex);
+
+                            }
+
+                        });
+                    }
                 });
                 s.Stop();
-               // Log.Info("----STATION UPDATES Task completed in " + s.Elapsed);
+                // Log.Info("----STATION UPDATES Task completed in " + s.Elapsed);
                 success = true;
             }
             catch (Exception ex)
             {
                 Log.Error("Error:" + ex);
             }
-            Error = "Station";
-            return success;
+            //Error = "Station";
+            //return success;
+            //});
+
         }
         #endregion
 

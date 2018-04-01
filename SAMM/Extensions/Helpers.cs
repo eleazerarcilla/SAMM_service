@@ -4,11 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using NLog;
 namespace SAMM.Extensions
 {
     public class Helpers
     {
+        Logger Log = LogManager.GetCurrentClassLogger();
         #region Distance Methods
         public double GetDistance(double lat1, double lon1, double lat2, double lon2)
         {
@@ -41,7 +42,8 @@ namespace SAMM.Extensions
             }
             catch (Exception ex)
             {
-               //ignored;
+                //ignored;
+                Log.Error(ex);
             }
             return res;
         }
@@ -60,6 +62,7 @@ namespace SAMM.Extensions
             catch (Exception ex)
             {
                 //ignored
+                Log.Error(ex);
             }
             return res;
         }

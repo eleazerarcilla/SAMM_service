@@ -20,7 +20,9 @@ namespace SAMM.Models
         public double DepotLat { get; set; }
         public double DepotLng { get; set; }
         public double GeoFenceRadiusInKM { get; set; }
+        public double MainTerminalGeoFenceRadiusInKM { get; set; }
         public string TraccarURI { get; set; }
+        public string SaveMainTerminalHistoryURL { get; set; }
 
         public ConstantsModel()
         {
@@ -36,6 +38,8 @@ namespace SAMM.Models
             this.GeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["GeoFenceRadiusInKM"]);
             this.TimerIntervalInSeconds = Convert.ToInt32(ConfigurationManager.AppSettings["TimerIntervalInSeconds"]);
             this.TraccarURI = ConfigurationManager.AppSettings["traccarwebapiURL"];
+            this.SaveMainTerminalHistoryURL = ConfigurationManager.AppSettings["SaveMainTerminalHistoryURL"];
+            this.MainTerminalGeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["MainTerminalGeoFenceRadiusInKM"]);
 
         }
     }
