@@ -185,7 +185,7 @@ namespace SAMM
                         bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value) == null ? false : true;
 
 
-                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
+                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))                            
                         {
                             loopIds += (StationLocModel.LoopIds == string.Empty ? (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() + "," : string.Empty) : (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() : string.Empty));
 
@@ -235,7 +235,7 @@ namespace SAMM
 
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
-                    List<String> dwellList = new List<String>(entry.Dwell.Split(','));
+                    List<String> dwellList = new List<String>(entry.Dwell.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
                     dwellList.Remove(loopids);
                     entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
 
@@ -244,7 +244,7 @@ namespace SAMM
                     .Where(y => y.LoopIds.Split(',').Contains(loopids)).ToList();
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
-                    List<String> loopIdsList = new List<String>(entry.LoopIds.Split(','));
+                    List<String> loopIdsList = new List<String>(entry.LoopIds.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
                     loopIdsList.Remove(loopids);
                     entry.LoopIds = String.Join(",", loopIdsList.ToArray()) + ",";
                 }
@@ -252,7 +252,7 @@ namespace SAMM
             else
             {
                 StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
-                String[] existingDwellList = ExistingRecord.Dwell.Split(',');
+                String[] existingDwellList = ExistingRecord.Dwell.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
 
                 if (existingDwellList.Contains(loopids))
                 {
@@ -264,6 +264,7 @@ namespace SAMM
                 }
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
+
                 //List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.LoopIds.Contains(loopids) && x.OrderOfArrival != iteratorID).ToList();
                 //foreach (StationLocationModel entry in ExistingRecordList)
                 //{
