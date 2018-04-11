@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.ServiceProcess;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 using System.Timers;
@@ -32,8 +31,6 @@ namespace SAMM
         List<StationLocationModel> StationLocModelList = new List<StationLocationModel>();
         List<PositionModel> pos = new List<PositionModel>();
         List<DevicesModel> DevicesList = new List<DevicesModel>();
-        List<DevicesModel> PreviousDevicesList = new List<DevicesModel>();
-
         List<DestinationModel> _DestList;
         #endregion
         public Service1()
@@ -73,13 +70,11 @@ namespace SAMM
         }
         #endregion
 
-
         public void PerformGETCallback(string apiURL, string GMURL, string DefZoomLvl, string FireBaseURL, string FireBaseAuth, string TraccarUName, string TraccarPword, List<DestinationModel> DestList)
         {
             try
             {
                 string resultOfPost = string.Empty;
-
                 //initialize
                 int GPSDeviceCount = 0;
                 double NumberOfGPSDeviceToProcess = 0.0;
@@ -128,15 +123,14 @@ namespace SAMM
                 }
 
                 string Error = string.Empty;
-
                 //SAMM.exe:
-                //PushToFirebase(LatLngList.ToList(), FireBaseURL, FireBaseAuth);
+                PushToFirebase(LatLngList.ToList(), FireBaseURL, FireBaseAuth);
+                Log.Info("----OVERALL Tasks (E-loop) completed " + s.Elapsed);
 
                 //SAMM_2.exe:
-                PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
+                //PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
+                //Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
 
-
-                Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
                 s.Stop();
 
             }
@@ -171,25 +165,6 @@ namespace SAMM
             }
             return success;
         }
-
-        public async void SaveMainTerminalHistory(int deviceid, String action, string reason = "")
-        {
-            //await Task.Run(() =>
-            //{
-            //    try
-            //    {
-            //        HttpWebRequest mainTerminalHistory_webReq = (HttpWebRequest)WebRequest.Create(Constants.SaveMainTerminalHistoryURL + "deviceid=" + deviceid + "&action=" + action + "&reason=" + reason);
-            //        WebResponse mainTerminalHistory_response = mainTerminalHistory_webReq.GetResponse();
-            //        mainTerminalHistory_response.Close();
-            //    }
-
-            //    catch (Exception ex)
-            //    {
-            //        Log.Error("Error in E-loop Location: Updating of Mainterminal History | " + ex);
-            //    }
-            //});
-
-        }
         public List<StationLocationModel> CheckStations(List<LatLngModel> LatLngList, List<DestinationModel> DestinationList)
         {
             try
@@ -208,23 +183,19 @@ namespace SAMM
                         int iteratorID = DestinationListEntry.OrderOfArrival;
                         bool isMainTerminal = DestinationListEntry.Value.Contains("Main") ? true : false;
                         bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value) == null ? false : true;
+
+
                         if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
                         {
-
                             loopIds += (StationLocModel.LoopIds == string.Empty ? (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() + "," : string.Empty) : (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() : string.Empty));
 
                             if (!IsExisting)
                             {
-                                if (DestinationListEntry.Value.Contains("Main"))
-                                {
-                                    if (IsDeviceOnline(LatLngListEntry.deviceid))
-                                        SaveMainTerminalHistory(Convert.ToInt32(LatLngListEntry.deviceid), "IN");
-                                }
                                 StationLocModel.Dwell = loopIds;
                                 StationLocModelList.Add(StationLocModel);
                             }
                             else
-                                UpdateExistingStationLocationModel(LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, true);
+                                UpdateExistingStationLocationModel(StationLocModelList, LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, true);
                         }
                         else
                         {
@@ -234,7 +205,7 @@ namespace SAMM
                             }
                             else
                             {
-                                UpdateExistingStationLocationModel(LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, false);
+                                UpdateExistingStationLocationModel(StationLocModelList, LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, false);
                             }
                             continue;
                         }
@@ -247,28 +218,19 @@ namespace SAMM
             {
                 Log.Error("----ERROR: " + ex);
             }
-
             return StationLocModelList;
         }
-        public void UpdateExistingStationLocationModel(string loopids, DestinationModel DestModel, int iteratorID, bool IsDwelling)
+        public void UpdateExistingStationLocationModel(List<StationLocationModel> SLModelList, string loopids, DestinationModel DestModel, int iteratorID, bool IsDwelling)
         {
             if (IsDwelling)
             {
-                StationLocationModel ExistingRecord = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
                 if (!ExistingRecord.Dwell.Split(',').Contains(loopids))
-                {
-                    if (ExistingRecord.Destination.Value.Contains("Main"))
-                    {
-                        int deviceid = Convert.ToInt32(loopids);
-                        if (IsDeviceOnline(deviceid))
-                            SaveMainTerminalHistory(deviceid, "IN");
-                    }
                     ExistingRecord.Dwell = ExistingRecord.Dwell + loopids + ",";
-                }
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
 
-                List<StationLocationModel> ExistingRecordList = StationLocModelList.Where(x => x.Destination.Value != DestModel.Value)
+                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
                     .Where(y => y.Dwell.Split(',').Contains(loopids)).ToList();
 
                 foreach (StationLocationModel entry in ExistingRecordList)
@@ -278,7 +240,7 @@ namespace SAMM
                     entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
 
                 }
-                ExistingRecordList = StationLocModelList.Where(x => x.Destination.Value != DestModel.Value)
+                ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
                     .Where(y => y.LoopIds.Split(',').Contains(loopids)).ToList();
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
@@ -289,23 +251,16 @@ namespace SAMM
             }
             else
             {
-                StationLocationModel ExistingRecord = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
                 String[] existingDwellList = ExistingRecord.Dwell.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
 
                 if (existingDwellList.Contains(loopids))
                 {
-
                     if (!ExistingRecord.LoopIds.Split(',').Contains(loopids))
                         ExistingRecord.LoopIds = ExistingRecord.LoopIds + loopids + ",";
                     List<String> dwellList = new List<String>(existingDwellList);
                     dwellList.Remove(loopids);
                     ExistingRecord.Dwell = String.Join(",", dwellList.ToArray()) + ",";
-                    if (ExistingRecord.Destination.Value.Contains("Main"))
-                    {
-                        int deviceId = Convert.ToInt32(loopids);
-                        if (IsDeviceOnline(deviceId))
-                            SaveMainTerminalHistory(Convert.ToInt32(loopids), "OUT");
-                    }
                 }
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
@@ -339,7 +294,6 @@ namespace SAMM
                             }
 
                     }
-
                 }
                 if (entry.Dwell != null && entry.Dwell.Length != 0)
                 {
@@ -368,6 +322,7 @@ namespace SAMM
             catch (Exception ex)
             {
                 //ignored
+                Log.Error(ex);
             }
             return IsOnline;
         }
@@ -480,9 +435,9 @@ namespace SAMM
         }
         public async void GetDevices(string URL)
         {
-            //List<DevicesModel> DevicesList = new List<DevicesModel>();
             await Task.Run(() =>
             {
+
                 try
                 {
                     string GETResult = string.Empty;
@@ -496,20 +451,12 @@ namespace SAMM
                     using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
                     {
                         GETResult = streamReader.ReadToEnd();
-                        if (DevicesList.Count > 0)
-                            PreviousDevicesList = new List<DevicesModel>(DevicesList);
                         DevicesList = JsonConvert.DeserializeObject<List<DevicesModel>>(GETResult);
                         streamReader.Close();
                     }
                     httpResponse.GetResponseStream().Close();
                     httpResponse.GetResponseStream().Flush();
                     s.Stop();
-                    foreach (DevicesModel previousDevice in PreviousDevicesList)
-                    {
-                        DevicesModel currentDevice = DevicesList.Where(x => x.id == previousDevice.id).FirstOrDefault();
-                        if (currentDevice.status == "offline" && previousDevice.status == "online")
-                            SaveMainTerminalHistory(currentDevice.id, "OUT", "Device went offline");
-                    }
                     //  Log.Info("Stations query finished in:" + s.Elapsed);
                     //Log.Info("Found (" + DevicesList.Count() + ") device" + (DevicesList.Count() > 1 ? "s." : "."));
 
@@ -521,13 +468,10 @@ namespace SAMM
                 }
             }
             );
-
-
         }
         #endregion
         #region Pushing to Firebase
         public async void PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth)
-        //public bool PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth, out String Error)
         {
             await Task.Run(() =>
             {
@@ -539,8 +483,6 @@ namespace SAMM
                     s.Start();
                     Parallel.ForEach(LatLngList, LatLngListEntry =>
                     {
-                        //await Task.Run(() =>
-                        //{
                         try
                         {
                             url = FireBaseURL + LatLngListEntry.deviceid + "/.json?auth=" + FireBaseAuth;
@@ -563,8 +505,6 @@ namespace SAMM
                         {
                             Log.Error("Error in E-loop Location:" + url + " | " + ex);
                         }
-
-                        //});
                     });
                     res = true;
                     s.Stop();
@@ -582,7 +522,6 @@ namespace SAMM
         }
         public void PushStationUpdatesToFirebase(List<StationLocationModel> StationLocModelList)//, out string Error)
         {
-            //await Task.Run(() => {
             bool success = false;
             Stopwatch s = new Stopwatch();
             try
@@ -607,17 +546,34 @@ namespace SAMM
                             response.Close();
                             httpRequest.GetRequestStream().Close();
                             httpRequest.GetRequestStream().Flush();
-
                         }
                         catch (Exception ex)
                         {
                             Log.Error("Error in E-loop Location:" + url + " | " + ex);
-
                         }
-
-
                     });
 
+
+                    //if (StationListEntry.Destination.Value.ToString() == "MainTerminalbesideFilinvestFirestation")
+                    //{
+                    //    await Task.Run(() =>
+                    //    {
+                    //        try
+                    //        {
+                    //            HttpWebRequest mainTerminalHistory_webReq = (HttpWebRequest)WebRequest.Create(Constants.SaveMainTerminalHistoryURL
+                    //            + "dwell=" + StationListEntry.Dwell.ToString()
+                    //            + "&loopids=" + StationListEntry.LoopIds.ToString());
+                    //            WebResponse mainTerminalHistory_response = mainTerminalHistory_webReq.GetResponse();
+                    //            mainTerminalHistory_response.Close();
+                    //        }
+                    //        catch (Exception ex)
+                    //        {
+                    //            Log.Error("Error in E-loop Location: Updating of Mainterminal History | " + ex);
+
+                    //        }
+
+                    //    });
+                    //}
                 });
                 s.Stop();
                 // Log.Info("----STATION UPDATES Task completed in " + s.Elapsed);
