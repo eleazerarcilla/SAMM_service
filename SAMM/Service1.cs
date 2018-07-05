@@ -128,6 +128,7 @@ namespace SAMM
                 Log.Info("----OVERALL Tasks (E-loop) completed " + s.Elapsed);
 
                 //SAMM_2.exe:
+
                 //PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
                 //Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
 
@@ -182,7 +183,7 @@ namespace SAMM
                         StationLocModel.OrderOfArrival = DestinationListEntry.OrderOfArrival;
                         int iteratorID = DestinationListEntry.OrderOfArrival;
                         bool isMainTerminal = DestinationListEntry.Value.Contains("Main") ? true : false;
-                        bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value) == null ? false : true;
+                        bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value && x.Destination.tblRouteID == DestinationListEntry.tblRouteID) == null ? false : true;
 
 
                         if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
@@ -224,13 +225,13 @@ namespace SAMM
         {
             if (IsDwelling)
             {
-                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value && x.Destination.tblRouteID == DestModel.tblRouteID);
                 if (!ExistingRecord.Dwell.Split(',').Contains(loopids))
                     ExistingRecord.Dwell = ExistingRecord.Dwell + loopids + ",";
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
 
-                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
+                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value && x.Destination.tblRouteID != DestModel.tblRouteID)
                     .Where(y => y.Dwell.Split(',').Contains(loopids)).ToList();
 
                 foreach (StationLocationModel entry in ExistingRecordList)
@@ -240,7 +241,7 @@ namespace SAMM
                     entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
 
                 }
-                ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value)
+                ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value && x.Destination.tblRouteID != DestModel.tblRouteID)
                     .Where(y => y.LoopIds.Split(',').Contains(loopids)).ToList();
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
@@ -251,7 +252,7 @@ namespace SAMM
             }
             else
             {
-                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value);
+                StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value && x.Destination.tblRouteID == DestModel.tblRouteID);
                 String[] existingDwellList = ExistingRecord.Dwell.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
 
                 if (existingDwellList.Contains(loopids))
@@ -387,6 +388,7 @@ namespace SAMM
 
                 res = JsonConvert.SerializeObject(new StationLocationModel
                 {
+                    tblRouteID = StationLocModel.Destination.tblRouteID,
                     OrderOfArrival = StationLocModel.OrderOfArrival,
                     LoopIds = StationLocModel.LoopIds,
                     Dwell = StationLocModel.Dwell
@@ -522,6 +524,7 @@ namespace SAMM
         }
         public void PushStationUpdatesToFirebase(List<StationLocationModel> StationLocModelList)//, out string Error)
         {
+
             bool success = false;
             Stopwatch s = new Stopwatch();
             try
@@ -531,7 +534,7 @@ namespace SAMM
                 {
                     await Task.Run(() =>
                     {
-                        string url = Constants.FireBaseURL.Replace("drivers", "vehicle_destinations") + StationListEntry.Destination.Value + "/.json?auth=" + Constants.FireBaseAuth;
+                        string url = Constants.FireBaseURL.Replace("drivers", "vehicle_destinations") + StationListEntry.Destination.Value + "_" + StationListEntry.Destination.tblRouteID.ToString() + "/.json?auth=" + Constants.FireBaseAuth;
                         try
                         {
                             string resultOfPost = string.Empty;

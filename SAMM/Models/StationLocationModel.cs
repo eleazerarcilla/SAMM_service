@@ -9,6 +9,7 @@ namespace SAMM.Models
    public class StationLocationModel
     {
        public DestinationModel Destination { get; set; }
+        public int tblRouteID { get; set; }
         public string LoopIds { get; set; }
         public string RecentlyLeftLoopIds { get; set; }
         public int OrderOfArrival { get; set; }

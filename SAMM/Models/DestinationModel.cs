@@ -10,6 +10,7 @@ namespace SAMM.Models
     {
 
         public int ID { get; set; }
+        public int tblRouteID { get; set; }
         public string Value { get; set; }
         public string Description { get; set; }
         public int OrderOfArrival { get; set; }
