@@ -16,5 +16,10 @@ namespace SAMM.Models
         public bool IsParked { get; set; }
         public int LatestStationOA { get; set; }
         public int PrevStationOA { get; set; }
+        public string routeIDs { get; set; }
+        public string enteredStation { get; set; }
+
+        
+
     }
 }

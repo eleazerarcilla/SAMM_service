@@ -61,10 +61,12 @@
     <Compile Include="Models\AttributeModel.cs" />
     <Compile Include="Models\ConstantsModel.cs" />
     <Compile Include="Models\DevicesModel.cs" />
+    <Compile Include="Models\Eloop.cs" />
     <Compile Include="Models\LatLngModel.cs" />
     <Compile Include="Models\StationLocationModel.cs" />
     <Compile Include="Models\PositionModel.cs" />
     <Compile Include="Models\DestinationModel.cs" />
+    <Compile Include="Models\VehicleDestinationModel.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -86,11 +88,17 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="DummyEloops.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="NLog.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

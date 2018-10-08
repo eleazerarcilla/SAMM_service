@@ -17,5 +17,17 @@ namespace SAMM.Models
         public string out2 { get; set; }
         public string panic { get; set; }
         public string totalDistance { get; set; }
+        public AttributeModel()
+        {
+            this.charge = "";
+            this.distance = "";
+            this.fuel = "";
+            this.ignition = "";
+            this.motion = "";
+            this.odometer = "";
+            this.out2 = "";
+            this.panic = "";
+            this.totalDistance = "";
+        }
     }
 }

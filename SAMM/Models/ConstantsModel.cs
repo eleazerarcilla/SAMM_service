@@ -16,6 +16,7 @@ namespace SAMM.Models
         public string TraccarUName { get; set; }
         public string TraccarPword { get; set; }
         public string LocationURL { get; set; }
+        public string DummyPositionsURL { get; set; }
         public int TimerIntervalInSeconds { get; set; }
         public double DepotLat { get; set; }
         public double DepotLng { get; set; }
@@ -23,6 +24,9 @@ namespace SAMM.Models
         public double MainTerminalGeoFenceRadiusInKM { get; set; }
         public string TraccarURI { get; set; }
         public string SaveMainTerminalHistoryURL { get; set; }
+        public string DefaultRouteIDs { get; set; }
+        public int StartIDforDummyEloop { get; set; }
+        public int EndIDforDummyEloop { get; set; }
 
         public ConstantsModel()
         {
@@ -33,6 +37,7 @@ namespace SAMM.Models
             this.TraccarUName = ConfigurationManager.AppSettings["TraccarUsername"];
             this.TraccarPword = ConfigurationManager.AppSettings["TraccarPassword"];
             this.LocationURL = ConfigurationManager.AppSettings["LocationProviderURL"];
+            this.DummyPositionsURL = ConfigurationManager.AppSettings["DummyPositionsProviderURL"];
             this.DepotLat = Convert.ToDouble(ConfigurationManager.AppSettings["DepotLat"]);
             this.DepotLng = Convert.ToDouble(ConfigurationManager.AppSettings["DepotLng"]);
             this.GeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["GeoFenceRadiusInKM"]);
@@ -40,7 +45,9 @@ namespace SAMM.Models
             this.TraccarURI = ConfigurationManager.AppSettings["traccarwebapiURL"];
             this.SaveMainTerminalHistoryURL = ConfigurationManager.AppSettings["SaveMainTerminalHistoryURL"];
             this.MainTerminalGeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["MainTerminalGeoFenceRadiusInKM"]);
-
+            this.DefaultRouteIDs = ConfigurationManager.AppSettings["DefaultRouteIDs"];
+            this.StartIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["StartIDforDummyEloop"]);
+            this.EndIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["EndIDforDummyEloop"]);
         }
     }
 }

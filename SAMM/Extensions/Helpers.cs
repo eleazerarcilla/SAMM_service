@@ -33,11 +33,12 @@ namespace SAMM.Extensions
         #region URL Methods
         public string GenerateURL(string TraccarURI, int lastctr)
         {
+            //Log.Info("Performing: GenerateURL | Parameters: TraccarURI=" + TraccarURI + ", lastctr=" + lastctr.ToString());
             string res = string.Empty;
             try
             {
                 string TraccarAPI = TraccarURI;
-                TraccarAPI += "positions?_dc" + GeneratePosQS(lastctr);
+                TraccarAPI += "positions";
                 res = TraccarAPI;
             }
             catch (Exception ex)
