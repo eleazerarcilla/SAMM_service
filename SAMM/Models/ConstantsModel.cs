@@ -22,6 +22,7 @@ namespace SAMM.Models
         public double DepotLng { get; set; }
         public double GeoFenceRadiusInKM { get; set; }
         public double MainTerminalGeoFenceRadiusInKM { get; set; }
+        public double PlazaBBuildingGeoFenceRadiusInKM { get; set; }
         public string TraccarURI { get; set; }
         public string SaveMainTerminalHistoryURL { get; set; }
         public string DefaultRouteIDs { get; set; }
@@ -45,6 +46,7 @@ namespace SAMM.Models
             this.TraccarURI = ConfigurationManager.AppSettings["traccarwebapiURL"];
             this.SaveMainTerminalHistoryURL = ConfigurationManager.AppSettings["SaveMainTerminalHistoryURL"];
             this.MainTerminalGeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["MainTerminalGeoFenceRadiusInKM"]);
+            this.PlazaBBuildingGeoFenceRadiusInKM = Convert.ToDouble(ConfigurationManager.AppSettings["PlazaBBuildingGeoFenceRadiusInKM"]);
             this.DefaultRouteIDs = ConfigurationManager.AppSettings["DefaultRouteIDs"];
             this.StartIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["StartIDforDummyEloop"]);
             this.EndIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["EndIDforDummyEloop"]);

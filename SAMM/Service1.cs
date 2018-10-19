@@ -56,14 +56,14 @@ namespace SAMM
                 GetDevices(help.GenerateURL(Constants.TraccarURI, lastctr).Replace("positions", "devices"));
                 //This code below is used for movement of dummy e-loop
                 //PerformGETCallback(
-                //    Constants.DummyPositionsURL, 
-                //    Constants.GMURL, 
-                //    Constants.DefZoomLvl, 
-                //    Constants.FireBaseURL, 
-                //    Constants.FireBaseAuth, 
-                //    Constants.TraccarUName, 
-                //    Constants.TraccarPword, 
-                //    GetStations(Constants.LocationURL) 
+                //    Constants.DummyPositionsURL,
+                //    Constants.GMURL,
+                //    Constants.DefZoomLvl,
+                //    Constants.FireBaseURL,
+                //    Constants.FireBaseAuth,
+                //    Constants.TraccarUName,
+                //    Constants.TraccarPword,
+                //    GetStations(Constants.LocationURL)
                 //    );
 
                 //This code below is used for movement of real e-loop
@@ -144,7 +144,7 @@ namespace SAMM
                 Stopwatch s = new Stopwatch();
                 s.Start();
 
-                Parallel.ForEach(positions, position =>
+                foreach(PositionModel position in positions)
                 {
                     LatLngModel currentLatLng = new LatLngModel { deviceid = Convert.ToInt32(position.deviceId), Lat = Convert.ToDouble(position.latitude), Lng = Convert.ToDouble(position.longitude) };
                     LatLngModel existingLatLng = LatLngList.FirstOrDefault(x => x.deviceid == currentLatLng.deviceid);
@@ -160,6 +160,8 @@ namespace SAMM
                     }
                     else
                     {
+                        if (existingLatLng.enteredStation == null)
+                            existingLatLng.enteredStation = "";
                         DestinationModel stationEntered = IsWithinStation(currentLatLng);
                         int OrderOfArrival = stationEntered.OrderOfArrival;
                         currentLatLng.enteredStation = existingLatLng.enteredStation;
@@ -168,8 +170,11 @@ namespace SAMM
                         currentLatLng.routeIDs = existingLatLng.routeIDs;
                         if (OrderOfArrival != 100)
                         {
-                            currentLatLng.routeIDs = getRouteIDsBasedOnStationWhereEloopIs(stationEntered);
-                            //currentLatLng.routeIDs = getRouteIDsBasedOnPreviousAndCurrentStationOfEloop(existingLatLng.enteredStation, currentLatLng.enteredStation);
+                            //currentLatLng.routeIDs = getRouteIDsBasedOnStationWhereEloopIs(stationEntered);
+                            if (!existingLatLng.enteredStation.Equals(currentLatLng.enteredStation, StringComparison.OrdinalIgnoreCase))
+                                currentLatLng.routeIDs = getRouteIDsBasedOnPreviousAndCurrentStationOfEloop(existingLatLng.enteredStation, currentLatLng.enteredStation);
+                            else
+                                currentLatLng.routeIDs = existingLatLng.routeIDs;
                         }
 
                         currentLatLng.LatestStationOA = OrderOfArrival == 100 ? currentLatLng.LatestStationOA : OrderOfArrival;
@@ -178,7 +183,7 @@ namespace SAMM
                             Log.Error("----ERROR Updating LatLng!----");
                         }
                     }
-                });
+                };
               
 
                 string Error = string.Empty;
@@ -216,27 +221,35 @@ namespace SAMM
         {
             
             //Log.Info("Performing: getRouteIDsBasedOnStationWhereEloopIs");
-
             List<DestinationModel> nodesOfPreviousStation = _DestList.Where(x => x.Value == (previousStation ?? "")).Select(x => x).ToList<DestinationModel>();
-            List<DestinationModel> nodesOfCurrentStation = new List<DestinationModel>();
+            List<DestinationModel> nodesOfCurrentStation = _DestList.Where(x => x.Value == (currentStation ?? "")).Select(x => x).ToList<DestinationModel>();
+            List<DestinationModel> finalNode = new List<DestinationModel>();
+            
             foreach(DestinationModel nodePrevious in nodesOfPreviousStation)
             {
-                DestinationModel nodeCurrent = _DestList.Where(x => x.Value == (currentStation ?? "") && x.OrderOfArrival == nodePrevious.OrderOfArrival + 1).Select(x => x).FirstOrDefault();
-                if(nodeCurrent != null)
+                foreach(DestinationModel nodeCurrent in nodesOfCurrentStation)
                 {
-                    nodesOfCurrentStation.Add(nodeCurrent);
+                    if (nodePrevious.OrderOfArrival + 1 == nodeCurrent.OrderOfArrival && nodePrevious.tblRouteID == nodeCurrent.tblRouteID)
+                        finalNode.Add(nodeCurrent);
                 }
             }
             List<String> routeIDs = new List<String>();
-            if(nodesOfCurrentStation.Count>0)
+            if(finalNode.Count>0)
             {
-                routeIDs = nodesOfCurrentStation.Select(x => x.tblRouteID.ToString()).ToList<String>();
+                routeIDs = finalNode.Select(x => x.tblRouteID.ToString()).ToList<String>();
                 
             }
             else
             {
                 routeIDs = _DestList.Where(x => x.Value == (currentStation ?? "")).Select(x => x.tblRouteID.ToString()).ToList<String>();
             }
+            //if (previousStation != null)
+            //    if (previousStation.Contains("PlazaBBuilding")&& previousStation != currentStation)
+            //    {
+            //        aTimer.Stop();
+            //        Debugger.Launch();
+            //    }
+            
             return String.Join(",", routeIDs.ToArray());
         }
 
@@ -280,6 +293,8 @@ namespace SAMM
 
                 foreach (DestinationModel DestinationListEntry in DestinationListForLoopOnly)
                 {
+                    
+                    
                     string loopIds = string.Empty;
                     foreach (LatLngModel LatLngListEntry in LatLngListForLoopOnly)
                     {
@@ -287,13 +302,33 @@ namespace SAMM
                         StationLocModel.Destination = DestinationListEntry;
                         StationLocModel.OrderOfArrival = DestinationListEntry.OrderOfArrival;
                         int iteratorID = DestinationListEntry.OrderOfArrival;
-                        bool isMainTerminal = DestinationListEntry.Value.Contains("Main") ? true : false;
                         bool IsExisting = StationLocModelList.FirstOrDefault(x => x.Destination.Value == DestinationListEntry.Value && x.Destination.tblRouteID == DestinationListEntry.tblRouteID) == null ? false : true;
 
+                        bool isMainTerminal = DestinationListEntry.Value.ToUpper().Contains("MAIN") ? true : false;
+                        bool isPlazaBBuilding = DestinationListEntry.Value.ToUpper().Contains("PLAZAB") ? true : false;
+                        Double addedValueToIncreasePerimeter = 0.0;
+                        if (isMainTerminal)
+                            addedValueToIncreasePerimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                        if (isPlazaBBuilding)
+                            addedValueToIncreasePerimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
 
-                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
+                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + addedValueToIncreasePerimeter))
                         {
-                            loopIds += (StationLocModel.LoopIds == string.Empty ? (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() + "," : string.Empty) : (LatLngListEntry.deviceid != 0 ? LatLngListEntry.deviceid.ToString() : string.Empty));
+
+                            
+                            //if (StationLocModel.LoopIds == string.Empty)
+                            if (LatLngListEntry.deviceid != 0)
+                                loopIds += LatLngListEntry.deviceid.ToString() + ",";
+                                //else
+                                //    if (LatLngListEntry.deviceid != 0)
+                                //    loopIds += LatLngListEntry.deviceid.ToString();
+
+                            //loopIds += (StationLocModel.LoopIds == string.Empty ?
+                            //    (LatLngListEntry.deviceid != 0 ?
+                            //        LatLngListEntry.deviceid.ToString() + ","
+                            //        : string.Empty) :
+                            //    (LatLngListEntry.deviceid != 0 ?
+                            //        LatLngListEntry.deviceid.ToString() : string.Empty));
 
                             if (!IsExisting)
                             {
@@ -326,6 +361,8 @@ namespace SAMM
             {
                 Log.Error("----ERROR: " + ex);
             }
+            
+            
             return StationLocModelList;
         }
         public void UpdateExistingStationLocationModel(List<StationLocationModel> SLModelList, string loopids, DestinationModel DestModel, int iteratorID, bool IsDwelling)
@@ -336,6 +373,7 @@ namespace SAMM
             //    + ", IsDwelling=" + IsDwelling.ToString());
             if (IsDwelling)
             {
+                
                 StationLocationModel ExistingRecord = SLModelList.FirstOrDefault(x => x.Destination.Value == DestModel.Value && x.Destination.tblRouteID == DestModel.tblRouteID);
                 
                 if (!ExistingRecord.Dwell.Split(',').Contains(loopids))
@@ -343,7 +381,7 @@ namespace SAMM
                 ExistingRecord.Destination = DestModel;
                 ExistingRecord.OrderOfArrival = DestModel.OrderOfArrival;
 
-                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value && x.Destination.tblRouteID !=DestModel.tblRouteID)
+                List<StationLocationModel> ExistingRecordList = SLModelList.Where(x => !x.Destination.Value.Equals(DestModel.Value,StringComparison.OrdinalIgnoreCase) && x.Destination.tblRouteID !=DestModel.tblRouteID)
                     .Where(y => y.Dwell.Split(',').Contains(loopids)).ToList();
 
                 foreach (StationLocationModel entry in ExistingRecordList)
@@ -352,7 +390,7 @@ namespace SAMM
                     dwellList.Remove(loopids);
                     entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
                 }
-                ExistingRecordList = SLModelList.Where(x => x.Destination.Value != DestModel.Value && x.Destination.tblRouteID != DestModel.tblRouteID)
+                ExistingRecordList = SLModelList.Where(x => !x.Destination.Value.Equals(DestModel.Value, StringComparison.OrdinalIgnoreCase) && x.Destination.tblRouteID != DestModel.tblRouteID)
                     .Where(y => y.LoopIds.Split(',').Contains(loopids)).ToList();
                 foreach (StationLocationModel entry in ExistingRecordList)
                 {
@@ -448,8 +486,14 @@ namespace SAMM
                 Parallel.ForEach(_DestList, (entry, loopState) =>
                 {
 
-                    bool isMainTerminal = entry.Value.Contains("Main") ? true : false;
-                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= (Constants.GeoFenceRadiusInKM + (isMainTerminal ? Constants.MainTerminalGeoFenceRadiusInKM : 0.0)))
+                    bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
+                    bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
+                    Double addedValueToIncreasePerimeter = 0.0;
+                    if (isMainTerminal)
+                        addedValueToIncreasePerimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                    if (isPlazaBBuilding)
+                        addedValueToIncreasePerimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
+                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= (Constants.GeoFenceRadiusInKM + addedValueToIncreasePerimeter))
                     { 
                         
                         result = entry;
@@ -527,7 +571,7 @@ namespace SAMM
 
                 
                 
-                Log.Info(jsonString);
+                //Log.Info(jsonString);
                 //res = JsonConvert.SerializeObject(new StationLocationModel
                 //{
 
@@ -646,6 +690,7 @@ namespace SAMM
         #region Pushing to Firebase
         public void PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth)
         {
+
 
             Log.Info("Performing: PushToFireBase | Parameters: FireBaseURL=" + FireBaseURL + ", FireBaseAuth=" + FireBaseAuth);
             //NOTE: Removed this await Task.Run portion.. Because it is causing delay in pushing to firebase. IDK why :(
@@ -785,6 +830,7 @@ namespace SAMM
         public string CreateVehicleDestinationsJson(List<StationLocationModel> StationLocModel)
         {
             Log.Info("Performing: CreateVehicleDestinationsJson");
+            
             string res = string.Empty;
             //aTimer.Stop();
             //Debugger.Launch();
@@ -794,13 +840,14 @@ namespace SAMM
                 String jsonString = "{";
                 foreach(StationLocationModel model in StationLocModel)
                 {
+                    
                     jsonString += "\""+ model.Destination.Value + "_" + model.Destination.tblRouteID + "\":{\"tblRouteID\":\"" + model.Destination.tblRouteID + "\",\"OrderOfArrival\":\"" 
                         + model.OrderOfArrival + "\",\"LoopIds\":\"" + model.LoopIds + "\",\"Dwell\":\"" + model.Dwell + "\"},";
 
                 }
                 jsonString = jsonString.Substring(0, jsonString.Length - 1);
                 jsonString += "}";
-                Log.Info(jsonString);
+                //Log.Info(jsonString);
                 //res = JsonConvert.SerializeObject(new StationLocationModel
                 //{
 
@@ -809,6 +856,7 @@ namespace SAMM
                 //    LoopIds = StationLocModel.LoopIds,
                 //    Dwell = StationLocModel.Dwell
                 //});
+                
                 return jsonString;
 
             }
