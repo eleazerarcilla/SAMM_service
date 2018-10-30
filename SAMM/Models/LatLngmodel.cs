@@ -9,6 +9,7 @@ namespace SAMM.Models
     public class LatLngModel
     {
         public int deviceid { get; set; }
+        public string Name { get; set; }
         public double Lat { get; set; }
         public double Lng { get; set; }
         public double PrevLat { get; set; }
@@ -18,6 +19,7 @@ namespace SAMM.Models
         public int PrevStationOA { get; set; }
         public string routeIDs { get; set; }
         public string enteredStation { get; set; }
+        
 
         
 
