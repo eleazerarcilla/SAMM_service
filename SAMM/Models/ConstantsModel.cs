@@ -25,6 +25,7 @@ namespace SAMM.Models
         public double PlazaBBuildingGeoFenceRadiusInKM { get; set; }
         public string TraccarURI { get; set; }
         public string SaveMainTerminalHistoryURL { get; set; }
+        public string InsertVehicleGeofenceRecordURL { get; set; }
         public string DefaultRouteIDs { get; set; }
         public int StartIDforDummyEloop { get; set; }
         public int EndIDforDummyEloop { get; set; }
@@ -50,6 +51,7 @@ namespace SAMM.Models
             this.DefaultRouteIDs = ConfigurationManager.AppSettings["DefaultRouteIDs"];
             this.StartIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["StartIDforDummyEloop"]);
             this.EndIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["EndIDforDummyEloop"]);
+            this.InsertVehicleGeofenceRecordURL = ConfigurationManager.AppSettings["InsertVehicleGeofenceRecordURL"];
         }
     }
 }

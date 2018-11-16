@@ -165,7 +165,9 @@ namespace SAMM
                             existingLatLng.enteredStation = "";
                         DestinationModel stationEntered = IsWithinStation(currentLatLng);
                         int OrderOfArrival = stationEntered.OrderOfArrival;
+                        
                         currentLatLng.enteredStation = existingLatLng.enteredStation;
+                        
                         if (stationEntered.Value != null && stationEntered.Value != "")
                             currentLatLng.enteredStation = stationEntered.Value;
                         currentLatLng.routeIDs = existingLatLng.routeIDs;
@@ -173,7 +175,12 @@ namespace SAMM
                         {
                             //currentLatLng.routeIDs = getRouteIDsBasedOnStationWhereEloopIs(stationEntered);
                             if (!existingLatLng.enteredStation.Equals(currentLatLng.enteredStation, StringComparison.OrdinalIgnoreCase))
+                            {
                                 currentLatLng.routeIDs = getRouteIDsBasedOnPreviousAndCurrentStationOfEloop(existingLatLng.enteredStation, currentLatLng.enteredStation);
+                                //save history here
+                                insertVehicleGeofenceRecord(stationEntered.Value, position.deviceId, "Entered");
+                               
+                            }
                             else
                                 currentLatLng.routeIDs = existingLatLng.routeIDs;
                         }
@@ -212,6 +219,31 @@ namespace SAMM
             }
 
 
+        }
+
+        private async void insertVehicleGeofenceRecord(String destinationValue, String tblGPSID, String action)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    Log.Info("Inserting Vehicle Geofence Record | Parameters: destinationValue=" + destinationValue
+                        + ", tblGPSID=" + tblGPSID
+                        + ", action=" + action);
+                    HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(Constants.InsertVehicleGeofenceRecordURL
+                    + "destinationValue=" + destinationValue
+                    + "&tblGPSID=" + tblGPSID
+                    + "&Action=" + action);
+                    WebResponse response = webRequest.GetResponse();
+                    response.Close();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Error in E-loop Location: Inserting Vehicle Geofence Record | " + ex);
+
+                }
+
+            });
         }
 
         private String getRouteIDsBasedOnStationWhereEloopIs(DestinationModel station)
