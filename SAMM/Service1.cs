@@ -31,6 +31,7 @@ namespace SAMM
         List<PositionModel> positions = new List<PositionModel>();
         List<DevicesModel> DevicesList = new List<DevicesModel>();
         List<DestinationModel> _DestList;
+        Boolean _isReportGenerated = false;
 
         #endregion
         public Service1()
@@ -96,9 +97,14 @@ namespace SAMM
 
         public void PerformGETCallback(string apiURL, string GMURL, string DefZoomLvl, string FireBaseURL, string FireBaseAuth, string TraccarUName, string TraccarPword, List<DestinationModel> DestList)
         {
+
+           
+
+
             Log.Info("Performing: PerformGETCallback | Parameters: apiURL=" + apiURL + ", GMURL=" + GMURL + ", DefZoomLvl=" + DefZoomLvl +
-                ", FireBaseURL=" + FireBaseURL + ", FirebaseAuth=" + FireBaseAuth + ", TraccarUName=" + TraccarUName
-                + ", TraccarPword=" + TraccarPword);
+            ", FireBaseURL=" + FireBaseURL + ", FirebaseAuth=" + FireBaseAuth + ", TraccarUName=" + TraccarUName
+            + ", TraccarPword=" + TraccarPword);
+            BeginReportGenerator();
             try
             {
                 string resultOfPost = string.Empty;
@@ -909,6 +915,46 @@ namespace SAMM
             return res;
 
 
+        }
+        private void BeginReportGenerator()
+        {
+
+
+            Log.Info("Started BeginReportGenerator");
+            try
+            {
+                DateTime currentDate = DateTime.Now;
+                if (currentDate.Hour == Constants.ReportGeneratorHour && currentDate.Minute == Constants.ReportGeneratorMinute && !_isReportGenerated)
+                {
+                    //Call here all report-generating methods
+                    saveVehicleSummaryReport();
+                    _isReportGenerated = true;
+                }
+                if (currentDate.Hour == Constants.ReportGeneratorHour && currentDate.Minute == Constants.ReportGeneratorMinute + 1 && _isReportGenerated)
+                {
+                    _isReportGenerated = false;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error in BeginReportGenerator");
+            }
+            
+          
+        }
+        private void saveVehicleSummaryReport()
+        {
+            Log.Info("Started saveVehicleSummaryReport");
+            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(Constants.VehicleSummaryReportGeneratorURL);
+
+            /***Comment the 2 lines of code below when using dummy e-loop***/
+            
+            /*******************************************/
+
+            httpRequest.Accept = "application/json";
+            List<Logger> logs = new List<Logger>();
+            HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
         }
         #endregion
 

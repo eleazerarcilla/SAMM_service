@@ -26,9 +26,12 @@ namespace SAMM.Models
         public string TraccarURI { get; set; }
         public string SaveMainTerminalHistoryURL { get; set; }
         public string InsertVehicleGeofenceRecordURL { get; set; }
+        public string VehicleSummaryReportGeneratorURL { get; set; }
         public string DefaultRouteIDs { get; set; }
         public int StartIDforDummyEloop { get; set; }
         public int EndIDforDummyEloop { get; set; }
+        public int ReportGeneratorHour { get; set; }
+        public int ReportGeneratorMinute { get; set; }
 
         public ConstantsModel()
         {
@@ -52,6 +55,9 @@ namespace SAMM.Models
             this.StartIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["StartIDforDummyEloop"]);
             this.EndIDforDummyEloop = Convert.ToInt32(ConfigurationManager.AppSettings["EndIDforDummyEloop"]);
             this.InsertVehicleGeofenceRecordURL = ConfigurationManager.AppSettings["InsertVehicleGeofenceRecordURL"];
+            this.VehicleSummaryReportGeneratorURL = ConfigurationManager.AppSettings["VehicleSummaryReportGeneratorURL"];
+            this.ReportGeneratorHour = Convert.ToInt32(ConfigurationManager.AppSettings["ReportGeneratorHour"]);
+            this.ReportGeneratorMinute = Convert.ToInt32(ConfigurationManager.AppSettings["ReportGeneratorMinute"]);
         }
     }
 }
