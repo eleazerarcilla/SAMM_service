@@ -919,11 +919,14 @@ namespace SAMM
         private void BeginReportGenerator()
         {
 
-
-            Log.Info("Started BeginReportGenerator");
+            DateTime currentDate = DateTime.Now;
+            Log.Info("Started BeginReportGenerator | currentDate.Hour = " 
+                + currentDate.Hour.ToString() 
+                + ", currentDate.Minute = " 
+                + currentDate.Minute.ToString());
             try
             {
-                DateTime currentDate = DateTime.Now;
+                
                 if (currentDate.Hour == Constants.ReportGeneratorHour && currentDate.Minute == Constants.ReportGeneratorMinute && !_isReportGenerated)
                 {
                     //Call here all report-generating methods
@@ -945,16 +948,24 @@ namespace SAMM
         }
         private void saveVehicleSummaryReport()
         {
-            Log.Info("Started saveVehicleSummaryReport");
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(Constants.VehicleSummaryReportGeneratorURL);
+            try
+            {
+                Log.Info("Started saveVehicleSummaryReport");
+                HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(Constants.VehicleSummaryReportGeneratorURL);
 
-            /***Comment the 2 lines of code below when using dummy e-loop***/
+                /***Comment the 2 lines of code below when using dummy e-loop***/
+
+                /*******************************************/
+
+                httpRequest.Accept = "application/json";
+                List<Logger> logs = new List<Logger>();
+                HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
+            }
+            catch(Exception ex)
+            {
+                Log.Error("Error in saveVehicleSummaryReport: " + ex.Message);
+            }
             
-            /*******************************************/
-
-            httpRequest.Accept = "application/json";
-            List<Logger> logs = new List<Logger>();
-            HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
         }
         #endregion
 
