@@ -97,10 +97,6 @@ namespace SAMM
 
         public void PerformGETCallback(string apiURL, string GMURL, string DefZoomLvl, string FireBaseURL, string FireBaseAuth, string TraccarUName, string TraccarPword, List<DestinationModel> DestList)
         {
-
-           
-
-
             Log.Info("Performing: PerformGETCallback | Parameters: apiURL=" + apiURL + ", GMURL=" + GMURL + ", DefZoomLvl=" + DefZoomLvl +
             ", FireBaseURL=" + FireBaseURL + ", FirebaseAuth=" + FireBaseAuth + ", TraccarUName=" + TraccarUName
             + ", TraccarPword=" + TraccarPword);
@@ -169,6 +165,8 @@ namespace SAMM
                     {
                         if (existingLatLng.enteredStation == null)
                             existingLatLng.enteredStation = "";
+                        bool isparked = (help.GetDistance(Constants.DepotLat, Constants.DepotLng, currentLatLng.Lat, currentLatLng.Lng) <= (Constants.MainTerminalGeoFenceRadiusInKM)) ? true : false;
+                        currentLatLng.IsParked = isparked;
                         DestinationModel stationEntered = IsWithinStation(currentLatLng);
                         int OrderOfArrival = stationEntered.OrderOfArrival;
                         
@@ -314,6 +312,7 @@ namespace SAMM
                 _entry.PrevLng = _entry.Lng;
                 _entry.Lat = Latlng.Lat;
                 _entry.Lng = Latlng.Lng;
+                _entry.IsParked = Latlng.IsParked;
                 _entry.PrevStationOA = (_entry.LatestStationOA == _entry.PrevStationOA) ? _entry.PrevStationOA : _entry.LatestStationOA;
                 _entry.LatestStationOA = Latlng.LatestStationOA;
                 _entry.enteredStation = Latlng.enteredStation;
@@ -352,13 +351,13 @@ namespace SAMM
 
                         bool isMainTerminal = DestinationListEntry.Value.ToUpper().Contains("MAIN") ? true : false;
                         bool isPlazaBBuilding = DestinationListEntry.Value.ToUpper().Contains("PLAZAB") ? true : false;
-                        Double addedValueToIncreasePerimeter = 0.0;
+                        Double permiter = Constants.GeoFenceRadiusInKM;
                         if (isMainTerminal)
-                            addedValueToIncreasePerimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                            permiter = Constants.MainTerminalGeoFenceRadiusInKM;
                         if (isPlazaBBuilding)
-                            addedValueToIncreasePerimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
+                            permiter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
 
-                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.GeoFenceRadiusInKM + addedValueToIncreasePerimeter))
+                        if (help.GetDistance(DestinationListEntry.Lat, DestinationListEntry.Lng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= permiter)
                         {
 
 
@@ -383,6 +382,10 @@ namespace SAMM
                             }
                             else
                                 UpdateExistingStationLocationModel(StationLocModelList, LatLngListEntry.deviceid.ToString(), DestinationListEntry, iteratorID, true);
+                        } 
+                        else if (help.GetDistance(Constants.DepotLat, Constants.DepotLng, LatLngListEntry.Lat, LatLngListEntry.Lng) <= (Constants.MainTerminalGeoFenceRadiusInKM))
+                        {
+                            RemoveLoopIDsfromDestinationWhenTheyEnteredMainDepot(StationLocModelList, LatLngListEntry.deviceid.ToString());
                         }
                         else
                         {
@@ -469,6 +472,34 @@ namespace SAMM
             }
 
         }
+        public void RemoveLoopIDsfromDestinationWhenTheyEnteredMainDepot(List<StationLocationModel> SLModelList, string deviceID)
+        {
+            try
+            {
+
+                List<StationLocationModel> ExistingRecordList = SLModelList.Where(y => y.Dwell.Split(',').Contains(deviceID)).ToList();
+
+                foreach (StationLocationModel entry in ExistingRecordList)
+                {
+                    List<String> dwellList = new List<String>(entry.Dwell.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
+                    dwellList.Remove(deviceID);
+                    entry.Dwell = String.Join(",", dwellList.ToArray()) + ",";
+                }
+                ExistingRecordList = SLModelList.Where(y => y.LoopIds.Split(',').Contains(deviceID)).ToList();
+                foreach (StationLocationModel entry in ExistingRecordList)
+                {
+                    List<String> loopIdsList = new List<String>(entry.LoopIds.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
+                    loopIdsList.Remove(deviceID);
+                    entry.LoopIds = String.Join(",", loopIdsList.ToArray()) + ",";
+                }
+            }
+            catch(Exception ex)
+            {
+                Log.Error(ex.Message);
+            }
+            
+          
+        }
         public void RemoveOfflineDevicesFromList(List<StationLocationModel> SLModelList)
         {
             //Log.Info("Performing: RemoveOfflineDevicesFromList");
@@ -534,12 +565,12 @@ namespace SAMM
 
                     bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
                     bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
-                    Double addedValueToIncreasePerimeter = 0.0;
+                    Double perimeter = Constants.GeoFenceRadiusInKM;
                     if (isMainTerminal)
-                        addedValueToIncreasePerimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                        perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
                     if (isPlazaBBuilding)
-                        addedValueToIncreasePerimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
-                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= (Constants.GeoFenceRadiusInKM + addedValueToIncreasePerimeter))
+                        perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
+                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= perimeter)
                     {
 
                         result = entry;
@@ -598,8 +629,10 @@ namespace SAMM
                 String jsonString = "{";
                 foreach (LatLngModel LatLng in LatLngList)
                 {
+                    
+                    if (LatLng.IsParked)
+                        LatLng.enteredStation = "";
 
-                    bool isparked = (help.GetDistance(Constants.DepotLat, Constants.DepotLng, LatLng.Lat, LatLng.Lng) <= (Constants.GeoFenceRadiusInKM + 0.02)) ? true : false;
                     
                     jsonString += "\"" + LatLng.deviceid
                         + "\":{\"Name\":\"" + LatLng.Name
@@ -608,11 +641,12 @@ namespace SAMM
                         + "\",\"PrevLat\":\"" + LatLng.PrevLat
                         + "\",\"PrevLng\":\"" + LatLng.PrevLng
                         + "\",\"deviceid\":\"" + LatLng.deviceid
-                        + "\",\"IsParked\":\"" + isparked
+                        + "\",\"IsParked\":\"" + LatLng.IsParked
                         + "\",\"LatestStationOA\":\"" + LatLng.LatestStationOA
                         + "\",\"PrevStationOA\":\"" + LatLng.PrevStationOA
                         + "\",\"EnteredStation\":\"" + LatLng.enteredStation
                         + "\",\"routeIDs\":\"" + LatLng.routeIDs + "\"},";
+                    
                 }
                 jsonString = jsonString.Substring(0, jsonString.Length - 1);
                 jsonString += "}";
