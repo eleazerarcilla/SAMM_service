@@ -19,6 +19,7 @@ namespace SAMM.Models
         public int PrevStationOA { get; set; }
         public string routeIDs { get; set; }
         public string enteredStation { get; set; }
+        public bool isDwelling { get; set; }
         
 
         

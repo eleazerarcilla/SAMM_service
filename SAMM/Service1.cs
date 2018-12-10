@@ -173,7 +173,15 @@ namespace SAMM
                         currentLatLng.enteredStation = existingLatLng.enteredStation;
                         
                         if (stationEntered.Value != null && stationEntered.Value != "")
+                        {
                             currentLatLng.enteredStation = stationEntered.Value;
+                            currentLatLng.isDwelling = true;
+                        }
+                        else
+                        {
+                            currentLatLng.isDwelling = false;
+                        }
+                            
                         currentLatLng.routeIDs = existingLatLng.routeIDs;
                         if (OrderOfArrival != 100)
                         {
@@ -316,6 +324,7 @@ namespace SAMM
                 _entry.PrevStationOA = (_entry.LatestStationOA == _entry.PrevStationOA) ? _entry.PrevStationOA : _entry.LatestStationOA;
                 _entry.LatestStationOA = Latlng.LatestStationOA;
                 _entry.enteredStation = Latlng.enteredStation;
+                _entry.isDwelling = Latlng.isDwelling;
                 _entry.Name = Latlng.Name;
                 _entry.routeIDs = Latlng.routeIDs;
                 res = _entry;
@@ -624,15 +633,15 @@ namespace SAMM
         {
             Log.Info("Performing: CreateLatLngJson");
             string res = string.Empty;
-            try
-            {
+            try { 
+                
                 String jsonString = "{";
                 foreach (LatLngModel LatLng in LatLngList)
                 {
+
                     
                     if (LatLng.IsParked)
                         LatLng.enteredStation = "";
-
                     
                     jsonString += "\"" + LatLng.deviceid
                         + "\":{\"Name\":\"" + LatLng.Name
@@ -645,9 +654,11 @@ namespace SAMM
                         + "\",\"LatestStationOA\":\"" + LatLng.LatestStationOA
                         + "\",\"PrevStationOA\":\"" + LatLng.PrevStationOA
                         + "\",\"EnteredStation\":\"" + LatLng.enteredStation
+                        + "\",\"IsDwelling\":\"" + LatLng.isDwelling
                         + "\",\"routeIDs\":\"" + LatLng.routeIDs + "\"},";
-                    
+
                 }
+                
                 jsonString = jsonString.Substring(0, jsonString.Length - 1);
                 jsonString += "}";
 
@@ -662,6 +673,7 @@ namespace SAMM
                 //    LoopIds = StationLocModel.LoopIds,
                 //    Dwell = StationLocModel.Dwell
                 //});
+                
                 return jsonString;
 
             }
@@ -768,6 +780,40 @@ namespace SAMM
             }
             );
         }
+
+        public Dictionary<String, DriversModel> GetCurrentDriversNode(string URL)
+        {
+            Log.Info("Performing: GetCurrentDriversNode | Parameters: URL=" + URL);
+            Dictionary<String, DriversModel> DriversNode = new Dictionary<string, DriversModel>();
+            
+            try
+            {
+                string GETResult = string.Empty;
+                StationList.Clear();
+                Stopwatch s = new Stopwatch();
+                s.Start();
+                HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(URL);
+                httpRequest.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
+                using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                {
+                    GETResult = streamReader.ReadToEnd();
+                    DriversNode = JsonConvert.DeserializeObject<Dictionary<String,DriversModel>>(GETResult);
+                    streamReader.Close();
+                }
+                httpResponse.GetResponseStream().Close();
+                httpResponse.GetResponseStream().Flush();
+                s.Stop();
+
+            }
+            catch (Exception ex)
+            {
+                //ignored
+
+            }
+            
+            return DriversNode;
+        }
         #endregion
         #region Pushing to Firebase
         public void PushToFirebase(List<LatLngModel> LatLngList, string FireBaseURL, string FireBaseAuth)
@@ -796,7 +842,7 @@ namespace SAMM
 
 
                     HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-                    httpRequest.Method = "PUT";
+                    httpRequest.Method = "PATCH";
                     httpRequest.ContentType = "application/json";
 
 
@@ -890,7 +936,7 @@ namespace SAMM
             {
                 string resultOfPost = string.Empty;
                 HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-                httpRequest.Method = "PUT";
+                httpRequest.Method = "PATCH";
                 httpRequest.ContentType = "application/json";
 
                 //var buffer = Encoding.UTF8.GetBytes(CreateDestinationJson(StationListEntry));
@@ -1005,4 +1051,5 @@ namespace SAMM
 
     }
 }
+
 

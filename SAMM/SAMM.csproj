@@ -61,6 +61,8 @@
     <Compile Include="Models\AttributeModel.cs" />
     <Compile Include="Models\ConstantsModel.cs" />
     <Compile Include="Models\DevicesModel.cs" />
+    <Compile Include="Models\DriversModel.cs" />
+    <Compile Include="Models\DriversNodeModel.cs" />
     <Compile Include="Models\Eloop.cs" />
     <Compile Include="Models\LatLngModel.cs" />
     <Compile Include="Models\StationLocationModel.cs" />
