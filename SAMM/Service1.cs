@@ -167,10 +167,10 @@ namespace SAMM
                             existingLatLng.enteredStation = "";
                         bool isparked = (help.GetDistance(Constants.DepotLat, Constants.DepotLng, currentLatLng.Lat, currentLatLng.Lng) <= (Constants.MainTerminalGeoFenceRadiusInKM)) ? true : false;
                         currentLatLng.IsParked = isparked;
+                        currentLatLng.enteredStation = existingLatLng.enteredStation;
                         DestinationModel stationEntered = IsWithinStation(currentLatLng);
                         int OrderOfArrival = stationEntered.OrderOfArrival;
                         
-                        currentLatLng.enteredStation = existingLatLng.enteredStation;
                         
                         if (stationEntered.Value != null && stationEntered.Value != "")
                         {
@@ -218,8 +218,8 @@ namespace SAMM
                 //SAMM_2.exe:
                 //StationLocModelList = CheckStations(LatLngList, DestList);
 
-                PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
-                Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
+                //PushStationUpdatesToFirebase(CheckStations(LatLngList, DestList));
+                //Log.Info("----OVERALL Tasks (Station) completed " + s.Elapsed);
 
                 s.Stop();
 
@@ -565,13 +565,14 @@ namespace SAMM
         }
         public DestinationModel IsWithinStation(LatLngModel LatLngEntry)
         {
+            //Created a list because there could be more than 1 entered station because we increased the geofence
+            List<DestinationModel> enteredStations = new List<DestinationModel>();
             //Log.Info("Performing: IsWithinStation");
             DestinationModel result = new DestinationModel();
             try
             {
                 Parallel.ForEach(_DestList, (entry, loopState) =>
                 {
-
                     bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
                     bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
                     Double perimeter = Constants.GeoFenceRadiusInKM;
@@ -579,16 +580,27 @@ namespace SAMM
                         perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
                     if (isPlazaBBuilding)
                         perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
-                    if (help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng) <= perimeter)
+                    Double distanceFromStation = help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng);
+                    if (distanceFromStation <= perimeter)
                     {
-
-                        result = entry;
-
-                        loopState.Break();
+                        entry.distanceFromStation = distanceFromStation;
+                        enteredStations.Add(entry);
+                        //result = entry;
+                        //loopState.Break();
 
                     }
 
                 });
+                if (enteredStations.Count>0)
+                {
+                    result = enteredStations.Select(x => x).OrderBy(x => x.distanceFromStation).FirstOrDefault();
+                    if (LatLngEntry.enteredStation.ToUpper().Contains("CAPITALONE") && result.Value.ToUpper().Contains("BELLEVUE"))
+                    {
+                        result = _DestList.Select(x => x).Where(x => x.Value.ToUpper().Contains("CONVERGYS")).FirstOrDefault();
+                    }
+
+                }
+                return result;
 
             }
             catch (Exception ex)
@@ -637,12 +649,15 @@ namespace SAMM
                 
                 String jsonString = "{";
                 foreach (LatLngModel LatLng in LatLngList)
-                {
-
-                    
+                { 
+                    if (!IsDeviceOnline(LatLng.deviceid))
+                    {
+                        LatLng.enteredStation = "";
+                        LatLng.isDwelling = false;
+                    }
                     if (LatLng.IsParked)
                         LatLng.enteredStation = "";
-                    
+
                     jsonString += "\"" + LatLng.deviceid
                         + "\":{\"Name\":\"" + LatLng.Name
                         + "\",\"Lat\":\"" + LatLng.Lat
@@ -656,6 +671,11 @@ namespace SAMM
                         + "\",\"EnteredStation\":\"" + LatLng.enteredStation
                         + "\",\"IsDwelling\":\"" + LatLng.isDwelling
                         + "\",\"routeIDs\":\"" + LatLng.routeIDs + "\"},";
+
+                    
+
+                    
+                  
 
                 }
                 
