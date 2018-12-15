@@ -30,6 +30,7 @@ namespace SAMM
         List<StationLocationModel> OldStationLocModelList = new List<StationLocationModel>();
         List<PositionModel> positions = new List<PositionModel>();
         List<DevicesModel> DevicesList = new List<DevicesModel>();
+        List<Eloop> VehicleList = new List<Eloop>();
         List<DestinationModel> _DestList;
         Boolean _isReportGenerated = false;
 
@@ -54,8 +55,8 @@ namespace SAMM
             Log.Info("Performing: OnTimedEvent");
             try
             {
-               
                 GetDevices(help.GenerateURL(Constants.TraccarURI, lastctr).Replace("positions", "devices"));
+                GetVehicles(Constants.GPSProviderURL);
                 //This code below is used for movement of dummy e-loop
                 //PerformGETCallback(
                 //    Constants.DummyPositionsURL,
@@ -155,7 +156,15 @@ namespace SAMM
 
                     if (!IsLatLngExisting)
                     {
-                        currentLatLng.routeIDs = Constants.DefaultRouteIDs;
+                        String defaultRouteIDs = Constants.DefaultRouteIDs;
+                        Eloop eloop = VehicleList.Where(x => x.DeviceID.ToString() == position.deviceId).Select(x=>x).FirstOrDefault();
+                        if (eloop!=null)
+                        {
+                            List<String> routeIDs = DestList.Where(x => x.LineID == eloop.tblLinesID).Select(x => x.tblRouteID.ToString()).Distinct().ToList<String>();
+                            defaultRouteIDs = String.Join(",", routeIDs);
+
+                        }
+                        currentLatLng.routeIDs = defaultRouteIDs;
                         currentLatLng.PrevLat = 0;
                         currentLatLng.PrevLng = 0;
                         LatLngList.Add(currentLatLng);
@@ -569,27 +578,37 @@ namespace SAMM
             List<DestinationModel> enteredStations = new List<DestinationModel>();
             //Log.Info("Performing: IsWithinStation");
             DestinationModel result = new DestinationModel();
+            int lineIDofVehicle = 0;
+
+            try
+            {
+                
+                lineIDofVehicle = VehicleList.Where(x => x.DeviceID == LatLngEntry.deviceid).Select(x => x.tblLinesID).First();
+            } catch (Exception ex) { }
+            
             try
             {
                 Parallel.ForEach(_DestList, (entry, loopState) =>
                 {
+                if (entry.LineID == lineIDofVehicle)
+                {
+
                     bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
-                    bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
-                    Double perimeter = Constants.GeoFenceRadiusInKM;
-                    if (isMainTerminal)
-                        perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
-                    if (isPlazaBBuilding)
-                        perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
-                    Double distanceFromStation = help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng);
-                    if (distanceFromStation <= perimeter)
-                    {
-                        entry.distanceFromStation = distanceFromStation;
-                        enteredStations.Add(entry);
-                        //result = entry;
-                        //loopState.Break();
-
+                        bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
+                        Double perimeter = Constants.GeoFenceRadiusInKM;
+                        if (isMainTerminal)
+                            perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                        if (isPlazaBBuilding)
+                            perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
+                        Double distanceFromStation = help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng);
+                        if (distanceFromStation <= perimeter)
+                        {
+                            entry.distanceFromStation = distanceFromStation;
+                            enteredStations.Add(entry);
+                            //result = entry;
+                            //loopState.Break();
+                        }
                     }
-
                 });
                 if (enteredStations.Count>0)
                 {
@@ -598,7 +617,6 @@ namespace SAMM
                     {
                         result = _DestList.Select(x => x).Where(x => x.Value.ToUpper().Contains("CONVERGYS")).FirstOrDefault();
                     }
-
                 }
                 return result;
 
@@ -649,7 +667,7 @@ namespace SAMM
                 
                 String jsonString = "{";
                 foreach (LatLngModel LatLng in LatLngList)
-                { 
+                {
                     if (!IsDeviceOnline(LatLng.deviceid))
                     {
                         LatLng.enteredStation = "";
@@ -791,6 +809,48 @@ namespace SAMM
                     //  Log.Info("Stations query finished in:" + s.Elapsed);
                     //Log.Info("Found (" + DevicesList.Count() + ") device" + (DevicesList.Count() > 1 ? "s." : "."));
 
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex);
+
+                }
+            }
+            );
+        }
+
+
+        public async void GetVehicles(string URL)
+        {
+            Log.Info("Performing: GetVehicles | Parameters: URL=" + URL);
+            await Task.Run(() =>
+            {
+                try
+                {
+
+                    string GETResult = string.Empty;
+                    VehicleList.Clear();
+                    Stopwatch s = new Stopwatch();
+                    s.Start();
+                    HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(URL);
+                    httpRequest.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                    HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
+                    using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
+                    {
+                        GETResult = streamReader.ReadToEnd();
+                        VehicleList = JsonConvert.DeserializeObject<List<Eloop>>(GETResult);
+                        streamReader.Close();
+                    }
+                    httpResponse.GetResponseStream().Close();
+                    
+                    s.Stop();
+                    //  Log.Info("Stations query finished in:" + s.Elapsed);
+                    //Log.Info("Found (" + DevicesList.Count() + ") device" + (DevicesList.Count() > 1 ? "s." : "."));
+                    //foreach(Eloop eloop in VehicleList)
+                    //{
+                    //    Log.Info(eloop.DeviceName);
+                    //}
+                  
                 }
                 catch (Exception ex)
                 {
@@ -1071,5 +1131,4 @@ namespace SAMM
 
     }
 }
-
 

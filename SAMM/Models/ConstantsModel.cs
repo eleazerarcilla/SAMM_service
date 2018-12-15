@@ -32,6 +32,7 @@ namespace SAMM.Models
         public int EndIDforDummyEloop { get; set; }
         public int ReportGeneratorHour { get; set; }
         public int ReportGeneratorMinute { get; set; }
+        public string GPSProviderURL { get;set;}
 
         public ConstantsModel()
         {
@@ -58,6 +59,7 @@ namespace SAMM.Models
             this.VehicleSummaryReportGeneratorURL = ConfigurationManager.AppSettings["VehicleSummaryReportGeneratorURL"];
             this.ReportGeneratorHour = Convert.ToInt32(ConfigurationManager.AppSettings["ReportGeneratorHour"]);
             this.ReportGeneratorMinute = Convert.ToInt32(ConfigurationManager.AppSettings["ReportGeneratorMinute"]);
+            this.GPSProviderURL = ConfigurationManager.AppSettings["GPSProviderURL"];
         }
     }
 }

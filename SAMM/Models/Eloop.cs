@@ -10,22 +10,31 @@ namespace SAMM.Models
     {
         public int ID;
         public int DeviceID;
-        public String GPS;
-        public DateTime DateTime;
-        public float Latitude;
-        public float Longitude;
-        public Boolean isProcessed;
+        public string DeviceName;
+        public string PlateNumber;
+        public int tblUsersID;
+        public int tblLinesID;
+        public int tblRoutesID;
+        public int tblRoutesIDbyDriver;
+        public string IsActive;
+        public string serverName;
+        public string DriverName;
 
 
-        public Eloop(int ID, int DeviceID, String GPS, DateTime DateTime, float Latitude, float Longitude)
+        public Eloop(int ID, int DeviceID, string DeviceName, string PlateNumber, int tblUsersID, int tblLinesID, int tblRoutesID,
+            int tblRoutesIDbyDriver, string IsActive, string serverName, string DriverName)
         {
             this.ID = ID;
             this.DeviceID = DeviceID;
-            this.GPS = GPS;
-            this.DateTime = DateTime;
-            this.Latitude = Latitude;
-            this.Longitude = Longitude;
-            this.isProcessed = false;
+            this.DeviceName = DeviceName;
+            this.PlateNumber = PlateNumber;
+            this.tblUsersID = tblUsersID;
+            this.tblLinesID = tblLinesID;
+            this.tblRoutesID = tblRoutesID;
+            this.tblRoutesIDbyDriver = tblRoutesIDbyDriver;
+            this.IsActive = IsActive;
+            this.serverName = serverName;
+            this.DriverName = DriverName;
         }
 
     }
