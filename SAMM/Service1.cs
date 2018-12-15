@@ -590,7 +590,7 @@ namespace SAMM
             {
                 Parallel.ForEach(_DestList, (entry, loopState) =>
                 {
-                if (entry.LineID == lineIDofVehicle)
+                if (entry.LineID == (lineIDofVehicle == 0 ? entry.LineID:lineIDofVehicle))
                 {
 
                     bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
