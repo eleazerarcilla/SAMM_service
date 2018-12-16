@@ -572,6 +572,7 @@ namespace SAMM
             }
             return IsOnline;
         }
+
         public DestinationModel IsWithinStation(LatLngModel LatLngEntry)
         {
             //Created a list because there could be more than 1 entered station because we increased the geofence
@@ -594,21 +595,24 @@ namespace SAMM
                 {
 
                     bool isMainTerminal = entry.Value.ToUpper().Contains("MAIN") ? true : false;
-                        bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
-                        Double perimeter = Constants.GeoFenceRadiusInKM;
-                        if (isMainTerminal)
-                            perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
-                        if (isPlazaBBuilding)
-                            perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
-                        Double distanceFromStation = help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng);
-                        if (distanceFromStation <= perimeter)
-                        {
-                            entry.distanceFromStation = distanceFromStation;
-                            enteredStations.Add(entry);
-                            //result = entry;
-                            //loopState.Break();
-                        }
+                    bool isPlazaBBuilding = entry.Value.ToUpper().Contains("PLAZAB") ? true : false;
+                        bool isSouthStation = entry.Value.ToUpper().Contains("SOUTHSTATIONTERMINAL") ? true : false;
+                    Double perimeter = Constants.GeoFenceRadiusInKM;
+                    if (isMainTerminal)
+                        perimeter = Constants.MainTerminalGeoFenceRadiusInKM;
+                    if (isPlazaBBuilding)
+                        perimeter = Constants.PlazaBBuildingGeoFenceRadiusInKM;
+                    if (isSouthStation)
+                        perimeter = Constants.SouthStationGeoFenceRadiusInKM;
+                    Double distanceFromStation = help.GetDistance(entry.Lat, entry.Lng, LatLngEntry.Lat, LatLngEntry.Lng);
+                    if (distanceFromStation <= perimeter)
+                    {
+                        entry.distanceFromStation = distanceFromStation;
+                        enteredStations.Add(entry);
+                        //result = entry;
+                        //loopState.Break();
                     }
+                }
                 });
                 if (enteredStations.Count>0)
                 {
@@ -616,6 +620,10 @@ namespace SAMM
                     if (LatLngEntry.enteredStation.ToUpper().Contains("CAPITALONE") && result.Value.ToUpper().Contains("BELLEVUE"))
                     {
                         result = _DestList.Select(x => x).Where(x => x.Value.ToUpper().Contains("CONVERGYS")).FirstOrDefault();
+                    }
+                    else if (LatLngEntry.enteredStation.ToUpper().Contains("VIVEREHOTEL") && result.Value.ToUpper().Contains("FRONTOFVIVERE"))
+                    {
+                        result = new DestinationModel();
                     }
                 }
                 return result;
