@@ -695,7 +695,9 @@ namespace SAMM
                         + "\",\"PrevStationOA\":\"" + LatLng.PrevStationOA
                         + "\",\"EnteredStation\":\"" + LatLng.enteredStation
                         + "\",\"IsDwelling\":\"" + LatLng.isDwelling
-                        + "\",\"routeIDs\":\"" + LatLng.routeIDs + "\"},";
+                        + "\",\"routeIDs\":\"" + LatLng.routeIDs 
+                        +"\",\"Timestamp\":\"" + DateTime.Now.ToString() 
+                        + "\"},";
 
                     
 
