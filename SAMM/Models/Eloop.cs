@@ -6,37 +6,36 @@ using System.Threading.Tasks;
 
 namespace SAMM.Models
 {
-    class Eloop
+    public class Eloop
     {
-        public int ID;
-        public int DeviceID;
-        public string DeviceName;
-        public string PlateNumber;
-        public int tblUsersID;
-        public int tblLinesID;
-        public int tblRoutesID;
-        public int tblRoutesIDbyDriver;
-        public string IsActive;
-        public string serverName;
-        public string DriverName;
+        public int ID { get; set; }
+        public int DeviceID { get; set; }
+        public string DeviceName { get; set; }
+        public string PlateNumber { get; set; }
+        public string tblUsersID { get; set; } = "0";
+        public string tblLinesID { get; set; } = "0";
+        public string tblRoutesID { get; set; } = "0";
+        public string tblRoutesIDbyDriver { get; set; } = "0";
+        public string IsActive { get; set; }
+        public string serverName { get; set; }
+        public string DriverName { get; set; }
 
 
-        public Eloop(int ID, int DeviceID, string DeviceName, string PlateNumber, int tblUsersID, int tblLinesID, int tblRoutesID,
-            int tblRoutesIDbyDriver, string IsActive, string serverName, string DriverName)
-        {
-            this.ID = ID;
-            this.DeviceID = DeviceID;
-            this.DeviceName = DeviceName;
-            this.PlateNumber = PlateNumber;
-            this.tblUsersID = tblUsersID;
-            this.tblLinesID = tblLinesID;
-            this.tblRoutesID = tblRoutesID;
-            this.tblRoutesIDbyDriver = tblRoutesIDbyDriver;
-            this.IsActive = IsActive;
-            this.serverName = serverName;
-            this.DriverName = DriverName;
-        }
+        //public Eloop(int ID, int DeviceID, string DeviceName, string PlateNumber, int tblUsersID, int tblLinesID, int tblRoutesID,
+        //    int tblRoutesIDbyDriver, string IsActive, string serverName, string DriverName)
+        //{
+        //    this.ID = ID;
+        //    this.DeviceID = DeviceID;
+        //    this.DeviceName = DeviceName;
+        //    this.PlateNumber = PlateNumber;
+        //    this.tblUsersID = tblUsersID.ToString();
+        //    this.tblLinesID = tblLinesID.ToString();
+        //    this.tblRoutesID = tblRoutesID.ToString();
+        //    this.tblRoutesIDbyDriver = tblRoutesIDbyDriver.ToString();
+        //    this.IsActive = IsActive;
+        //    this.serverName = serverName;
+        //    this.DriverName = DriverName;
+        //}
 
     }
 }
-    

@@ -43,6 +43,7 @@ namespace SAMM
         #region Timer
         protected override void OnStart(string[] args)
         {
+            System.Diagnostics.Debugger.Launch();
             int interval = Constants.TimerIntervalInSeconds * 1000;
             aTimer = new System.Timers.Timer(interval);
             aTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
@@ -107,7 +108,6 @@ namespace SAMM
                 string resultOfPost = string.Empty;
                 //initialize
                 int GPSDeviceCount = 0;
-                double NumberOfGPSDeviceToProcess = 0.0;
 
                 #region RealCode
 
@@ -136,10 +136,10 @@ namespace SAMM
                 httpResponse.GetResponseStream().Flush();
 
 
-                if (GPSDeviceCount % 2 == 0)
-                    NumberOfGPSDeviceToProcess = GPSDeviceCount / 2;
-                else
-                    NumberOfGPSDeviceToProcess = (GPSDeviceCount / 2) + 0.5;
+                //if (GPSDeviceCount % 2 == 0)
+                //    NumberOfGPSDeviceToProcess = GPSDeviceCount / 2;
+                //else
+                //    NumberOfGPSDeviceToProcess = (GPSDeviceCount / 2) + 0.5;
                 #endregion
 
 
@@ -160,7 +160,7 @@ namespace SAMM
                         Eloop eloop = VehicleList.Where(x => x.DeviceID.ToString() == position.deviceId).Select(x=>x).FirstOrDefault();
                         if (eloop!=null)
                         {
-                            List<String> routeIDs = DestList.Where(x => x.LineID == eloop.tblLinesID).Select(x => x.tblRouteID.ToString()).Distinct().ToList<String>();
+                            List<String> routeIDs = DestList.Where(x => x.LineID == Convert.ToInt32(eloop.tblLinesID)).Select(x => x.tblRouteID.ToString()).Distinct().ToList<String>();
                             defaultRouteIDs = String.Join(",", routeIDs);
 
                         }
@@ -583,8 +583,7 @@ namespace SAMM
 
             try
             {
-                
-                lineIDofVehicle = VehicleList.Where(x => x.DeviceID == LatLngEntry.deviceid).Select(x => x.tblLinesID).First();
+                lineIDofVehicle = VehicleList.Where(x => x.DeviceID == Convert.ToInt32(LatLngEntry.deviceid)).Select(x => Convert.ToInt32(x.tblLinesID)).First();
             } catch (Exception ex) { }
             
             try
@@ -777,7 +776,6 @@ namespace SAMM
                     streamReader.Close();
                 }
                 httpResponse.GetResponseStream().Close();
-                httpResponse.GetResponseStream().Flush();
                 s.Stop();
 
             }
@@ -845,8 +843,13 @@ namespace SAMM
                     HttpWebResponse httpResponse = (HttpWebResponse)httpRequest.GetResponse();
                     using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
                     {
+                        var settings = new JsonSerializerSettings
+                        {
+                            NullValueHandling = NullValueHandling.Ignore,
+                            MissingMemberHandling = MissingMemberHandling.Ignore
+                        };
                         GETResult = streamReader.ReadToEnd();
-                        VehicleList = JsonConvert.DeserializeObject<List<Eloop>>(GETResult);
+                        VehicleList = JsonConvert.DeserializeObject<List<Eloop>>(GETResult, settings);
                         streamReader.Close();
                     }
                     httpResponse.GetResponseStream().Close();
